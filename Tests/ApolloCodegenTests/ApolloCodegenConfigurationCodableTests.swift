@@ -82,6 +82,7 @@ class ApolloCodegenConfigurationCodableTests: XCTestCase {
               }
             }
           ],
+          "alwaysWrapInNamespace" : false,
           "apqs" : "persistedOperationsOnly",
           "cocoapodsCompatibleImportStatements" : true,
           "conversionStrategies" : {

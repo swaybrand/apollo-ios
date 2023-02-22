@@ -136,6 +136,7 @@ class MockNamespaceFileGeneratorTests: XCTestCase {
     let configuration = ApolloCodegen.ConfigurationContext(config: ApolloCodegenConfiguration.mock(
       .embeddedInTarget(name: "MockApplication"),
       testMocks: .none,
+      options: .init(alwaysWrapInNamespace: true),
       to: rootURL.path
     ))
 
@@ -158,13 +159,160 @@ class MockNamespaceFileGeneratorTests: XCTestCase {
     // then
     expect(self.subject).to(beNil())
   }
+
+  func test__generate__givenOutputOption_alwaysWrapInNamespace_shouldGenerateNamespaceFile() throws {
+    // given
+    let absoluteFileURL = rootURL.appendingPathComponent("TestSchemaTestMocks.graphql.swift")
+    let moduleFileURL = rootURL.appendingPathComponent("TestMocks/TestSchemaTestMocks.graphql.swift")
+
+    let tests: [(
+      moduleType: ApolloCodegenConfiguration.SchemaTypesFileOutput.ModuleType,
+      operations: ApolloCodegenConfiguration.OperationsFileOutput,
+      testMocks: ApolloCodegenConfiguration.TestMockFileOutput,
+      expectation: URL
+    )] = [
+      (
+        moduleType: .swiftPackageManager,
+        operations: .inSchemaModule,
+        testMocks: .swiftPackage(targetName: nil),
+        expectation: moduleFileURL
+      ),
+      (
+        moduleType: .swiftPackageManager,
+        operations: .relative(subpath: nil),
+        testMocks: .swiftPackage(targetName: nil),
+        expectation: moduleFileURL
+      ),
+      (
+        moduleType: .swiftPackageManager,
+        operations: .absolute(path: rootURL.path),
+        testMocks: .swiftPackage(targetName: nil),
+        expectation: moduleFileURL
+      ),
+      (
+        moduleType: .swiftPackageManager,
+        operations: .inSchemaModule,
+        testMocks: .absolute(path: rootURL.path),
+        expectation: absoluteFileURL
+      ),
+      (
+        moduleType: .swiftPackageManager,
+        operations: .relative(subpath: nil),
+        testMocks: .absolute(path: rootURL.path),
+        expectation: absoluteFileURL
+      ),
+      (
+        moduleType: .swiftPackageManager,
+        operations: .absolute(path: rootURL.path),
+        testMocks: .absolute(path: rootURL.path),
+        expectation: absoluteFileURL
+      ),
+      /* Ignored Cases: Invalid configurations caught in ApolloCodegenTests.swift
+      (
+        moduleType: .embeddedInTarget(name: "MockApplication"),
+        operations: .inSchemaModule,
+        testMocks: .swiftPackage(targetName: nil)
+      ),
+      (
+        moduleType: .embeddedInTarget(name: "MockApplication"),
+        operations: .relative(subpath: nil),
+        testMocks: .swiftPackage(targetName: nil)
+      ),
+      (
+        moduleType: .embeddedInTarget(name: "MockApplication"),
+        operations: .absolute(path: rootURL.path),
+        testMocks: .swiftPackage(targetName: nil)
+      ),
+      */
+      (
+        moduleType: .embeddedInTarget(name: "MockApplication"),
+        operations: .inSchemaModule,
+        testMocks: .absolute(path: rootURL.path),
+        expectation: absoluteFileURL
+      ),
+      (
+        moduleType: .embeddedInTarget(name: "MockApplication"),
+        operations: .relative(subpath: nil),
+        testMocks: .absolute(path: rootURL.path),
+        expectation: absoluteFileURL
+      ),
+      (
+        moduleType: .embeddedInTarget(name: "MockApplication"),
+        operations: .absolute(path: rootURL.path),
+        testMocks: .absolute(path: rootURL.path),
+        expectation: absoluteFileURL
+      ),
+      /* Ignored Cases: Invalid configurations caught in ApolloCodegenTests.swift
+      (
+        moduleType: .other,
+        operations: .inSchemaModule,
+        testMocks: .swiftPackage(targetName: nil)
+      ),
+      (
+        moduleType: .other,
+        operations: .relative(subpath: nil),
+        testMocks: .swiftPackage(targetName: nil)
+      ),
+      (
+        moduleType: .other,
+        operations: .absolute(path: rootURL.path),
+        testMocks: .swiftPackage(targetName: nil)
+      ),
+      */
+      (
+        moduleType: .other,
+        operations: .inSchemaModule,
+        testMocks: .absolute(path: rootURL.path),
+        expectation: absoluteFileURL
+      ),
+      (
+        moduleType: .other,
+        operations: .relative(subpath: nil),
+        testMocks: .absolute(path: rootURL.path),
+        expectation: absoluteFileURL
+      ),
+      (
+        moduleType: .other,
+        operations: .absolute(path: rootURL.path),
+        testMocks: .absolute(path: rootURL.path),
+        expectation: absoluteFileURL
+      )
+    ]
+
+    for test in tests {
+      let config = ApolloCodegen.ConfigurationContext(config: .mock(
+        test.moduleType,
+        operations: test.operations,
+        testMocks: test.testMocks,
+        options: .init(alwaysWrapInNamespace: true),
+        to: rootURL.path
+      ))
+
+      buildSubject(config: config)
+
+      mockFileManager.mock(closure: .createFile({ path, data, attributes in
+        // then
+        expect(path).to(equal(test.expectation.path))
+
+        return true
+      }))
+
+      // when
+      try subject.generate(forConfig: config, fileManager: mockFileManager)
+
+      // then
+      expect(self.mockFileManager.allClosuresCalled).to(beTrue())
+    }
+  }
 }
 
 private extension ApolloCodegenConfiguration {
   static func mock(
     _ moduleType: ApolloCodegenConfiguration.SchemaTypesFileOutput.ModuleType,
     schemaName: String = "TestSchema",
+    operations: ApolloCodegenConfiguration.OperationsFileOutput = .inSchemaModule,
     testMocks: ApolloCodegenConfiguration.TestMockFileOutput,
+    options: ApolloCodegenConfiguration.OutputOptions = .init(),
     to path: String
   ) -> Self {
     .mock(
@@ -173,7 +321,9 @@ private extension ApolloCodegenConfiguration {
         schemaTypes: .init(
           path: path,
           moduleType: moduleType),
-        testMocks: testMocks)
+        operations: operations,
+        testMocks: testMocks),
+      options: options
     )
   }
 }

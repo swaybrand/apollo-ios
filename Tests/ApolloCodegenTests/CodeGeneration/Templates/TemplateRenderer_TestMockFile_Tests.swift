@@ -11,13 +11,14 @@ class TemplateRenderer_TestMockFile_Tests: XCTestCase {
     moduleType: ApolloCodegenConfiguration.SchemaTypesFileOutput.ModuleType,
     schemaName: String = "testSchema",
     operations: ApolloCodegenConfiguration.OperationsFileOutput,
-    cocoapodsCompatibleImportStatements: Bool = false
+    cocoapodsCompatibleImportStatements: Bool = false,
+    alwaysWrapInNamespace: Bool = false
   ) -> ApolloCodegenConfiguration {
     ApolloCodegenConfiguration.mock(
       schemaName: schemaName,
       input: .init(schemaPath: "MockInputPath", operationSearchPaths: []),
       output: .mock(moduleType: moduleType, operations: operations),
-      options: .init(cocoapodsCompatibleImportStatements: cocoapodsCompatibleImportStatements)
+      options: .init(cocoapodsCompatibleImportStatements: cocoapodsCompatibleImportStatements, alwaysWrapInNamespace: alwaysWrapInNamespace)
     )
   }
 
@@ -89,57 +90,121 @@ class TemplateRenderer_TestMockFile_Tests: XCTestCase {
     let tests: [(
       schemaTypes: ApolloCodegenConfiguration.SchemaTypesFileOutput.ModuleType,
       operations: ApolloCodegenConfiguration.OperationsFileOutput,
+      forceNamespace: Bool,
       expectation: String
     )] = [
       (
         schemaTypes: .swiftPackageManager,
         operations: .relative(subpath: nil),
+        forceNamespace: false,
+        expectation: expectedNoNamespace
+      ),
+      (
+        schemaTypes: .swiftPackageManager,
+        operations: .relative(subpath: nil),
+        forceNamespace: true,
+        expectation: expectedNamespace
+      ),
+      (
+        schemaTypes: .swiftPackageManager,
+        operations: .absolute(path: "path"),
+        forceNamespace: false,
         expectation: expectedNoNamespace
       ),
       (
         schemaTypes: .swiftPackageManager,
         operations: .absolute(path: "path"),
+        forceNamespace: true,
+        expectation: expectedNamespace
+      ),
+      (
+        schemaTypes: .swiftPackageManager,
+        operations: .inSchemaModule,
+        forceNamespace: false,
         expectation: expectedNoNamespace
       ),
       (
         schemaTypes: .swiftPackageManager,
         operations: .inSchemaModule,
+        forceNamespace: true,
+        expectation: expectedNamespace
+      ),
+      (
+        schemaTypes: .other,
+        operations: .relative(subpath: nil),
+        forceNamespace: false,
         expectation: expectedNoNamespace
       ),
       (
         schemaTypes: .other,
         operations: .relative(subpath: nil),
+        forceNamespace: true,
+        expectation: expectedNamespace
+      ),
+      (
+        schemaTypes: .other,
+        operations: .absolute(path: "path"),
+        forceNamespace: false,
         expectation: expectedNoNamespace
       ),
       (
         schemaTypes: .other,
         operations: .absolute(path: "path"),
+        forceNamespace: true,
+        expectation: expectedNamespace
+      ),
+      (
+        schemaTypes: .other,
+        operations: .inSchemaModule,
+        forceNamespace: false,
         expectation: expectedNoNamespace
       ),
       (
         schemaTypes: .other,
         operations: .inSchemaModule,
+        forceNamespace: true,
+        expectation: expectedNamespace
+      ),
+      (
+        schemaTypes: .embeddedInTarget(name: "MockApplication"),
+        operations: .relative(subpath: nil),
+        forceNamespace: false,
         expectation: expectedNoNamespace
       ),
       (
         schemaTypes: .embeddedInTarget(name: "MockApplication"),
         operations: .relative(subpath: nil),
+        forceNamespace: true,
+        expectation: expectedNamespace
+      ),
+      (
+        schemaTypes: .embeddedInTarget(name: "MockApplication"),
+        operations: .absolute(path: "path"),
+        forceNamespace: false,
         expectation: expectedNoNamespace
       ),
       (
         schemaTypes: .embeddedInTarget(name: "MockApplication"),
         operations: .absolute(path: "path"),
-        expectation: expectedNoNamespace
+        forceNamespace: true,
+        expectation: expectedNamespace
       ),
       (
         schemaTypes: .embeddedInTarget(name: "MockApplication"),
         operations: .inSchemaModule,
+        forceNamespace: false,
+        expectation: expectedNamespace
+      ),
+      (
+        schemaTypes: .embeddedInTarget(name: "MockApplication"),
+        operations: .inSchemaModule,
+        forceNamespace: true,
         expectation: expectedNamespace
       )
     ]
 
     for test in tests {
-      let config = buildConfig(moduleType: test.schemaTypes, operations: test.operations)
+      let config = buildConfig(moduleType: test.schemaTypes, operations: test.operations, alwaysWrapInNamespace: test.forceNamespace)
       let subject = buildSubject(config: config)
 
       // when
