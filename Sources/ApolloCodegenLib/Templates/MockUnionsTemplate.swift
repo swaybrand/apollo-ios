@@ -9,7 +9,7 @@ struct MockUnionsTemplate: TemplateRenderer {
 
   let target: TemplateTarget = .testMockFile
 
-  var template: TemplateString {
+  var detachedTemplate: TemplateString? {
     TemplateString("""
     public extension MockObject {
       \(graphQLUnions.map {
@@ -19,4 +19,6 @@ struct MockUnionsTemplate: TemplateRenderer {
     
     """)
   }
+
+  var template: TemplateString { .init(stringLiteral: "") }
 }

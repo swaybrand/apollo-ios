@@ -9,7 +9,7 @@ struct MockInterfacesTemplate: TemplateRenderer {
 
   let target: TemplateTarget = .testMockFile
 
-  var template: TemplateString {
+  var detachedTemplate: TemplateString? {
     TemplateString("""
     public extension MockObject {
       \(graphQLInterfaces.map {
@@ -19,4 +19,6 @@ struct MockInterfacesTemplate: TemplateRenderer {
 
     """)
   }
+
+  var template: TemplateString { .init(stringLiteral: "") }
 }

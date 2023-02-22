@@ -396,6 +396,12 @@ public class ApolloCodegen {
         forConfig: config,
         fileManager: fileManager
       )
+      try MockNamespaceFileGenerator(
+        config: config
+      )?.generate(
+        forConfig: config,
+        fileManager: fileManager
+      )
     }
 
     try SchemaMetadataFileGenerator(schema: ir.schema, config: config)

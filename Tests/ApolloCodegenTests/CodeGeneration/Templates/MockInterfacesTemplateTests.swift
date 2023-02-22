@@ -28,7 +28,7 @@ class MockInterfacesTemplateTests: XCTestCase {
   }
 
   private func renderSubject() -> String {
-    subject.template.description
+    subject.detachedTemplate!.description
   }
 
   // MARK: Boilerplate tests
@@ -70,6 +70,38 @@ class MockInterfacesTemplateTests: XCTestCase {
       typealias InterfaceA = Interface
       typealias InterfaceB = Interface
       typealias Interfacec = Interface
+    }
+
+    """
+
+    // when
+    let actual = renderSubject()
+
+    // then
+    expect(actual).to(equalLineByLine(expected))
+  }
+
+  func test_render_isNotWrappedInNamespace() {
+    // given
+    let Pet = GraphQLInterfaceType.mock("Pet")
+
+    let config = ApolloCodegenConfiguration.mock(output: .init(
+      schemaTypes: .init(
+        path: "MockSchemaTypes",
+        moduleType: .embeddedInTarget(name: "MockApplication")
+      ),
+      operations: .inSchemaModule,
+      testMocks: .absolute(path: "TestMocks")
+    ))
+
+    subject = MockInterfacesTemplate(
+      graphQLInterfaces: [Pet],
+      config: ApolloCodegen.ConfigurationContext(config: config)
+    )
+
+    let expected = """
+    public extension MockObject {
+      typealias Pet = Interface
     }
 
     """

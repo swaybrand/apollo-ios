@@ -22,12 +22,13 @@ class MockObjectTemplateTests: XCTestCase {
     interfaces: [GraphQLInterfaceType] = [],
     schemaName: String = "TestSchema",
     moduleType: ApolloCodegenConfiguration.SchemaTypesFileOutput.ModuleType = .swiftPackageManager,
+    output: ApolloCodegenConfiguration.FileOutput? = nil,
     warningsOnDeprecatedUsage: ApolloCodegenConfiguration.Composition = .exclude
   ) {
     let config = ApolloCodegenConfiguration.mock(
-      moduleType,
-      options: .init(warningsOnDeprecatedUsage: warningsOnDeprecatedUsage),
-      schemaName: schemaName
+      schemaName: schemaName,
+      output: output ?? .init(schemaTypes: .init(path: "MockModulePath", moduleType: moduleType)),
+      options: .init(warningsOnDeprecatedUsage: warningsOnDeprecatedUsage)
     )
     ir = IR.mock(compilationResult: .mock())
 
@@ -39,7 +40,11 @@ class MockObjectTemplateTests: XCTestCase {
   }
 
   private func renderSubject() -> String {
-    subject.template.description
+    if let detached = subject.detachedTemplate?.description, !detached.isEmpty {
+      return "\(subject.template.description)\n\n\(detached)"
+    } else {
+      return "\(subject.template.description)\n"
+    }
   }
 
   // MARK: Boilerplate tests
@@ -494,6 +499,98 @@ class MockObjectTemplateTests: XCTestCase {
         objectList: [Mock<Cat>]? = nil,
         objectNestedList: [[Mock<Cat>]]? = nil,
         objectOptionalList: [Mock<Cat>?]? = nil,
+        optionalString: String? = nil,
+        string: String? = nil,
+        union: AnyMock? = nil,
+        unionList: [AnyMock]? = nil,
+        unionNestedList: [[AnyMock]]? = nil,
+        unionOptionalList: [AnyMock?]? = nil
+      ) {
+        self.init()
+        self.customScalar = customScalar
+        self.enumType = enumType
+        self.interface = interface
+        self.interfaceList = interfaceList
+        self.interfaceNestedList = interfaceNestedList
+        self.interfaceOptionalList = interfaceOptionalList
+        self.object = object
+        self.objectList = objectList
+        self.objectNestedList = objectNestedList
+        self.objectOptionalList = objectOptionalList
+        self.optionalString = optionalString
+        self.string = string
+        self.union = union
+        self.unionList = unionList
+        self.unionNestedList = unionNestedList
+        self.unionOptionalList = unionOptionalList
+      }
+    }
+
+    """
+    // when
+    let actual = renderSubject()
+
+    // then
+    expect(actual).to(equalLineByLine(
+      expected,
+      atLine: 8 + self.subject.graphqlObject.fields.count,
+      ignoringExtraLines: false)
+    )
+  }
+
+  func test_render_givenTestMocksWrappedInNamespace_generatesConvenienceInitializerWithFullyQualifiedMockTypes() {
+    // given
+    buildSubject(output: .init(
+      schemaTypes: .init(path: "MockModulePath", moduleType: .embeddedInTarget(name: "TestSchema")),
+      operations: .inSchemaModule,
+      testMocks: .absolute(path: "TestMocks")
+    ))
+
+    let Cat: GraphQLType = .entity(GraphQLObjectType.mock("Cat"))
+    let Animal: GraphQLType = .entity(GraphQLInterfaceType.mock("Animal"))
+    let Pet: GraphQLType = .entity(GraphQLUnionType.mock("Pet"))
+
+    subject.graphqlObject.fields = [
+      "string": .mock("string", type: .nonNull(.string())),
+      "customScalar": .mock("customScalar", type: .nonNull(.scalar(.mock(name: "CustomScalar")))),
+      "optionalString": .mock("optionalString", type: .string()),
+      "object": .mock("object", type: Cat),
+      "objectList": .mock("objectList", type: .list(.nonNull(Cat))),
+      "objectNestedList": .mock("objectNestedList", type: .list(.nonNull(.list(.nonNull(Cat))))),
+      "objectOptionalList": .mock("objectOptionalList", type: .list(Cat)),
+      "interface": .mock("interface", type: Animal),
+      "interfaceList": .mock("interfaceList", type: .list(.nonNull(Animal))),
+      "interfaceNestedList": .mock("interfaceNestedList", type: .list(.nonNull(.list(.nonNull(Animal))))),
+      "interfaceOptionalList": .mock("interfaceOptionalList", type: .list(Animal)),
+      "union": .mock("union", type: Pet),
+      "unionList": .mock("unionList", type: .list(.nonNull(Pet))),
+      "unionNestedList": .mock("unionNestedList", type: .list(.nonNull(.list(.nonNull(Pet))))),
+      "unionOptionalList": .mock("unionOptionalList", type: .list(Pet)),
+      "enumType": .mock("enumType", type: .enum(.mock(name: "enumType"))),
+    ]
+
+    ir.fieldCollector.add(
+      fields: subject.graphqlObject.fields.values.map {
+        .mock($0.name, type: $0.type)
+      },
+      to: subject.graphqlObject
+    )
+
+    let expected = """
+    }
+
+    public extension Mock where O == TestSchemaTestMocks.Dog {
+      convenience init(
+        customScalar: TestSchema.CustomScalar? = nil,
+        enumType: GraphQLEnum<TestSchema.EnumType>? = nil,
+        interface: AnyMock? = nil,
+        interfaceList: [AnyMock]? = nil,
+        interfaceNestedList: [[AnyMock]]? = nil,
+        interfaceOptionalList: [AnyMock?]? = nil,
+        object: Mock<TestSchemaTestMocks.Cat>? = nil,
+        objectList: [Mock<TestSchemaTestMocks.Cat>]? = nil,
+        objectNestedList: [[Mock<TestSchemaTestMocks.Cat>]]? = nil,
+        objectOptionalList: [Mock<TestSchemaTestMocks.Cat>?]? = nil,
         optionalString: String? = nil,
         string: String? = nil,
         union: AnyMock? = nil,

@@ -19,9 +19,12 @@ struct MockObjectTemplate: TemplateRenderer {
     deprecationReason: String?
   )
 
-  var template: TemplateString {
-    let objectName = graphqlObject.name.firstUppercased
-    let fields: [TemplateField] = ir.fieldCollector
+  private var objectName: String {
+    graphqlObject.name.firstUppercased
+  }
+
+  private var fields: [TemplateField] {
+    ir.fieldCollector
       .collectedFields(for: graphqlObject)
       .map {
         (
@@ -33,9 +36,12 @@ struct MockObjectTemplate: TemplateRenderer {
           deprecationReason: $0.deprecationReason
         )
       }
+  }
 
-    return """
-    public class \(objectName): MockObject {
+  var template: TemplateString {
+    """
+    \(if: config.needsTypesWrappedInNamespace, "", else: "public ")\
+    class \(objectName): MockObject {
       public static let objectType: Object = \(config.schemaName.firstUppercased).Objects.\(objectName)
       public static let _mockFields = MockFields()
       public typealias MockValueCollectionType = Array<Mock<\(objectName)>>
@@ -49,10 +55,16 @@ struct MockObjectTemplate: TemplateRenderer {
         }, separator: "\n")
       }
     }
+    """
+  }
+
+  var detachedTemplate: TemplateString? {
+    """
     \(!fields.isEmpty ?
       TemplateString("""
-      
-      public extension Mock where O == \(objectName) {
+      public extension Mock where O == \
+      \(if: config.needsTypesWrappedInNamespace, "\(config.schemaName.firstUppercased)TestMocks.")\
+      \(objectName) {
         convenience init(
           \(fields.map { """
             \($0.propertyName)\(ifLet: $0.initializerParameterName, {" \($0)"}): \($0.mockType)? = nil
@@ -77,7 +89,10 @@ struct MockObjectTemplate: TemplateRenderer {
         case is GraphQLInterfaceType, is GraphQLUnionType:
           mockType = "AnyMock"
         default:
-          mockType = "Mock<\(graphQLCompositeType.name.firstUppercased)>"
+          let fullyQualifiedName = config.needsTypesWrappedInNamespace ?
+            "\(config.schemaName.firstUppercased)TestMocks.\(graphQLCompositeType.name.firstUppercased)"
+            : graphQLCompositeType.name.firstUppercased
+          mockType = "Mock<\(fullyQualifiedName)>"
         }
         return TemplateString("\(mockType)\(if: !forceNonNull, "?")").description
       case .scalar,
