@@ -356,6 +356,15 @@ public struct ApolloCodegenConfiguration: Codable, Equatable {
     ///
     ///  Defaults to `true`.
     public let pruneGeneratedFiles: Bool
+    /// Whether generated schema and mock types should be namespaced regardless of the
+    /// other configuration options specified.
+    ///
+    /// When `true`, generated schema and test mock types will be namespaced with the value
+    /// of your configuration's `schemaName` with the test mock namespace including the
+    /// additional suffix "TestMocks".
+    ///
+    /// Defaults to `false`, preventing automatic namespacing for most configurations.
+    public let alwaysWrapInNamespace: Bool
 
     /// Default property values
     public struct Default {
@@ -368,6 +377,7 @@ public struct ApolloCodegenConfiguration: Codable, Equatable {
       public static let warningsOnDeprecatedUsage: Composition = .include
       public static let conversionStrategies: ConversionStrategies = .init()
       public static let pruneGeneratedFiles: Bool = true
+      public static let alwaysWrapInNamespace: Bool = false
     }
 
     /// Designated initializer.
@@ -397,7 +407,8 @@ public struct ApolloCodegenConfiguration: Codable, Equatable {
       cocoapodsCompatibleImportStatements: Bool = Default.cocoapodsCompatibleImportStatements,
       warningsOnDeprecatedUsage: Composition = Default.warningsOnDeprecatedUsage,
       conversionStrategies: ConversionStrategies = Default.conversionStrategies,
-      pruneGeneratedFiles: Bool = Default.pruneGeneratedFiles
+      pruneGeneratedFiles: Bool = Default.pruneGeneratedFiles,
+      alwaysWrapInNamespace: Bool = Default.alwaysWrapInNamespace
     ) {
       self.additionalInflectionRules = additionalInflectionRules
       self.queryStringLiteralFormat = queryStringLiteralFormat
@@ -408,6 +419,7 @@ public struct ApolloCodegenConfiguration: Codable, Equatable {
       self.warningsOnDeprecatedUsage = warningsOnDeprecatedUsage
       self.conversionStrategies = conversionStrategies
       self.pruneGeneratedFiles = pruneGeneratedFiles
+      self.alwaysWrapInNamespace = alwaysWrapInNamespace
     }
 
     // MARK: Codable
@@ -422,6 +434,7 @@ public struct ApolloCodegenConfiguration: Codable, Equatable {
       case warningsOnDeprecatedUsage
       case conversionStrategies
       case pruneGeneratedFiles
+      case alwaysWrapInNamespace
     }
 
     public init(from decoder: Decoder) throws {
@@ -471,6 +484,11 @@ public struct ApolloCodegenConfiguration: Codable, Equatable {
         Bool.self,
         forKey: .pruneGeneratedFiles
       ) ?? Default.pruneGeneratedFiles
+
+      alwaysWrapInNamespace = try values.decodeIfPresent(
+        Bool.self,
+        forKey: .alwaysWrapInNamespace
+      ) ?? Default.alwaysWrapInNamespace
     }
   }
 
@@ -743,5 +761,13 @@ extension ApolloCodegenConfiguration.TestMockFileOutput {
     case .swiftPackage: return true
     case .absolute, .none: return false
     }
+  }
+}
+
+extension ApolloCodegenConfiguration {
+  /// Whether or not generated schema and test mocks types should be wrapped in their respective namespaces.
+  var needsWrappedInNamespace: Bool {
+    options.alwaysWrapInNamespace ||
+    (!output.testMocks.isInModule && output.operations.isInModule && !output.schemaTypes.isInModule)
   }
 }

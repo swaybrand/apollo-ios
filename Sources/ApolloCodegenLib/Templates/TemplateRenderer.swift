@@ -114,7 +114,7 @@ extension TemplateRenderer {
     \(ifLet: headerTemplate, { "\($0)\n" })
     \(ImportStatementTemplate.Operation.template(for: config))
 
-    \(if: config.output.operations.isInModule && !config.output.schemaTypes.isInModule,
+    \(if: config.needsWrappedInNamespace,
       template.wrappedInNamespace(config.schemaName.firstUppercased),
     else:
       template)
@@ -137,7 +137,7 @@ extension TemplateRenderer {
     \(ifLet: headerTemplate, { "\($0)\n" })
     \(ImportStatementTemplate.TestMock.template(for: config))
 
-    \(if: !config.output.testMocks.isInModule && config.output.operations.isInModule && !config.output.schemaTypes.isInModule,
+    \(if: config.needsWrappedInNamespace,
       template.wrappedInNamespace("\(config.schemaName.firstUppercased)TestMocks"),
     else:
       template)
