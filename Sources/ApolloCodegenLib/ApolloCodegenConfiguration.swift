@@ -288,7 +288,9 @@ public struct ApolloCodegenConfiguration: Codable, Equatable {
     ///
     /// - Note: Generated files must be manually added to your test target. Test mocks generated
     /// this way may also be manually embedded in a test utility module that is imported by your
-    /// test target.
+    /// test target. The generated test mock types files will be namespaced with the value of your
+    /// configuration's `schemaName` and appending the suffix "TestMocks" when your schema types
+    /// configuration also uses namespacing.
     case absolute(path: String)
     /// Generated test mock files will be included in a target defined in the generated
     /// `Package.swift` file that is suitable for linking the generated test mock files to your
@@ -730,6 +732,16 @@ extension ApolloCodegenConfiguration.OperationsFileOutput {
     switch self {
     case .inSchemaModule: return true
     case .absolute, .relative: return false
+    }
+  }
+}
+
+extension ApolloCodegenConfiguration.TestMockFileOutput {
+  /// Determine whether the test mock files are output to a module.
+  var isInModule: Bool {
+    switch self {
+    case .swiftPackage: return true
+    case .absolute, .none: return false
     }
   }
 }
